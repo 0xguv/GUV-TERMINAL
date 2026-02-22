@@ -1,0 +1,200 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #111111;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+  --border-color: #333333;
+  --border-light: #444444;
+  --terminal-green: #00ff00;
+  --terminal-green-dim: #00aa00;
+  --terminal-red: #ff4444;
+  --terminal-amber: #ffb000;
+  --terminal-cyan: #00ffff;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, Oxygen, Ubuntu, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Selection */
+::selection {
+  background: var(--terminal-green);
+  color: var(--bg-primary);
+}
+
+/* Removed CRT Effect for better readability */
+
+/* Flicker Animation */
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.9; }
+  15% { opacity: 0.95; }
+  20% { opacity: 0.99; }
+  50% { opacity: 0.95; }
+  80% { opacity: 0.9; }
+  100% { opacity: 0.97; }
+}
+
+.flicker {
+  animation: flicker 0.15s infinite;
+}
+
+/* Blink Animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.blink {
+  animation: blink 1s infinite;
+}
+
+/* Flash Animation */
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.flash {
+  animation: flash 2s infinite;
+}
+
+/* Glow Effect */
+.glow {
+  text-shadow: 0 0 5px currentColor;
+}
+
+.glow-green {
+  text-shadow: 0 0 5px var(--terminal-green);
+}
+
+/* Pulse Animation */
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--terminal-green); }
+  50% { border-color: var(--terminal-green-dim); }
+}
+
+/* Crypto Terminal Specific */
+@keyframes data-stream {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes matrix-rain {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px var(--terminal-cyan), 0 0 10px var(--terminal-cyan);
+  }
+  50% { 
+    box-shadow: 0 0 20px var(--terminal-cyan), 0 0 30px var(--terminal-cyan);
+  }
+}
+
+@keyframes hash-rate {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.crypto-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+.block-animation {
+  animation: hash-rate 3s infinite;
+}
+
+/* Terminal Matrix Effect */
+.matrix-bg {
+  background-image: 
+    linear-gradient(0deg, transparent 24%, rgba(0, 255, 0, .03) 25%, rgba(0, 255, 0, .03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 0, .03) 75%, rgba(0, 255, 0, .03) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(0, 255, 0, .03) 25%, rgba(0, 255, 0, .03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 0, .03) 75%, rgba(0, 255, 0, .03) 76%, transparent 77%, transparent);
+  background-size: 50px 50px;
+}
+
+/* Price Update Flash */
+@keyframes price-flash-green {
+  0% { background-color: rgba(0, 255, 0, 0.2); }
+  100% { background-color: transparent; }
+}
+
+@keyframes price-flash-red {
+  0% { background-color: rgba(255, 68, 68, 0.2); }
+  100% { background-color: transparent; }
+}
+
+.price-up {
+  animation: price-flash-green 0.5s ease;
+}
+
+.price-down {
+  animation: price-flash-red 0.5s ease;
+}
+
+/* Loading Animation */
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.loading-pulse {
+  animation: loading-pulse 1.5s infinite;
+}
+
+/* Scanline Effect removed for better readability */

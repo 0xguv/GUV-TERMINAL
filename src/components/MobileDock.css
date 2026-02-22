@@ -1,0 +1,69 @@
+.mobile-dock {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  border-top: 1px solid var(--border-color);
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  z-index: 1000;
+}
+
+.dock-items {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: var(--radius-md);
+}
+
+.dock-item:hover {
+  color: var(--text-secondary);
+}
+
+.dock-item.active {
+  color: var(--accent-success);
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.dock-icon {
+  font-size: 20px;
+  position: relative;
+  line-height: 1;
+}
+
+.dock-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 8px;
+  color: var(--accent-danger);
+}
+
+.dock-label {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* Show dock on mobile */
+@media (max-width: 768px) {
+  .mobile-dock {
+    display: block;
+  }
+}
