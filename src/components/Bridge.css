@@ -619,9 +619,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -636,15 +636,15 @@
 }
 
 .coming-soon-content h2 {
-  font-size: 48px;
+  font-size: 24px;
   font-weight: bold;
-  margin: 0 0 16px 0;
-  letter-spacing: 4px;
-  text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+  margin: 0 0 8px 0;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .coming-soon-content p {
-  font-size: 16px;
+  font-size: 12px;
   color: var(--text-secondary);
   margin: 0;
 }

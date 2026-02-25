@@ -5,6 +5,7 @@ import './CryptoDetail.css';
 
 const CryptoDetail = ({ crypto, onClose }) => {
   const [detailData, setDetailData] = useState(null);
+  const [marketData, setMarketData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -17,8 +18,40 @@ const CryptoDetail = ({ crypto, onClose }) => {
     if (!isSolanaToken && crypto.symbol) {
       // Fetch detailed CoinGecko data using symbol (works with both CMC and CoinGecko providers)
       fetchCoinGeckoDetailsBySymbol(crypto.symbol);
+      // Fetch real-time market data
+      fetchMarketData(crypto.symbol);
     }
   }, [crypto]);
+
+  const fetchMarketData = async (symbol) => {
+    if (!symbol) return;
+    
+    try {
+      // First search for the coin to get the ID
+      const searchResponse = await fetch(
+        `https://api.coingecko.com/api/v3/search?query=${symbol.toLowerCase()}`
+      );
+      
+      if (!searchResponse.ok) return;
+      
+      const searchData = await searchResponse.json();
+      const coinMatch = searchData.coins?.find(
+        coin => coin.symbol.toLowerCase() === symbol.toLowerCase()
+      );
+      
+      if (!coinMatch) return;
+      
+      const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_BASE}/api/coin/market?id=${coinMatch.id}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMarketData(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch market data:', err);
+    }
+  };
 
   const fetchCoinGeckoDetailsBySymbol = async (symbol) => {
     if (!symbol) {
@@ -77,14 +110,23 @@ const CryptoDetail = ({ crypto, onClose }) => {
     }
   };
 
+  // Use real-time market data when available
+  const realTimePrice = marketData?.market_data?.current_price?.usd || crypto.price;
+  const realTimeMarketCap = marketData?.market_data?.market_cap?.usd;
+  const realTimeVolume = marketData?.market_data?.total_volume?.usd;
+  const realTimeChange = marketData?.market_data?.price_change_percentage_24h || crypto.changePercent;
+  const realTimeHigh = marketData?.market_data?.high_24h?.usd || crypto.high24h;
+  const realTimeLow = marketData?.market_data?.low_24h?.usd || crypto.low24h;
+  const realTimeATH = marketData?.market_data?.ath?.usd;
+
   if (!crypto) return null;
 
-  const isPositive = crypto.change >= 0;
+  const isPositive = (realTimeChange || 0) >= 0;
 
-  // Calculate additional metrics
-  const priceChangeFromATH = ((crypto.price - crypto.ath) / crypto.ath * 100).toFixed(2);
-  const volatility = Math.abs(crypto.changePercent).toFixed(2);
-  const range24h = ((crypto.high24h - crypto.low24h) / crypto.low24h * 100).toFixed(2);
+  // Calculate additional metrics using real data
+  const priceChangeFromATH = realTimeATH ? ((realTimePrice - realTimeATH) / realTimeATH * 100).toFixed(2) : '--';
+  const volatility = Math.abs(realTimeChange || 0).toFixed(2);
+  const range24h = realTimeHigh && realTimeLow ? ((realTimeHigh - realTimeLow) / realTimeLow * 100).toFixed(2) : '--';
 
   const formatPrice = (price) => {
     if (!price) return '$0.00';
@@ -105,6 +147,23 @@ const CryptoDetail = ({ crypto, onClose }) => {
     if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
     if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
     return num.toFixed(2);
+  };
+
+  const formatVolume = (num) => {
+    if (!num) return '--';
+    if (num >= 1e12) return '$' + (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9) return '$' + (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return '$' + (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e3) return '$' + (num / 1e3).toFixed(2) + 'K';
+    return '$' + num.toFixed(2);
+  };
+
+  const formatMarketCap = (num) => {
+    if (!num) return '--';
+    if (num >= 1e12) return '$' + (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9) return '$' + (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return '$' + (num / 1e6).toFixed(2) + 'M';
+    return '$' + num.toLocaleString();
   };
 
   // Extract social media links from CoinGecko data
@@ -166,6 +225,9 @@ const CryptoDetail = ({ crypto, onClose }) => {
         {/* Header */}
         <div className="detail-header">
           <div className="detail-title">
+            {crypto.image && (
+              <img src={crypto.image} alt={crypto.symbol} className="detail-icon" />
+            )}
             <span className="detail-rank">#{crypto.rank}</span>
             <span className="detail-symbol">{crypto.symbol}</span>
             <span className="detail-name">{crypto.name}</span>
@@ -178,7 +240,7 @@ const CryptoDetail = ({ crypto, onClose }) => {
           <TradingViewWidget 
             symbol={crypto.symbol} 
             pairName={crypto.name} 
-            currentPrice={formatPrice(crypto.price)} 
+            currentPrice={formatPrice(realTimePrice)} 
           />
         </div>
 
@@ -187,9 +249,9 @@ const CryptoDetail = ({ crypto, onClose }) => {
           {/* Price Header */}
           <div className="detail-price-header">
             <div className="detail-price-main">
-              <span className="detail-price">{formatPrice(crypto.price)}</span>
+              <span className="detail-price">{formatPrice(realTimePrice)}</span>
               <span className={`detail-change ${isPositive ? 'positive' : 'negative'}`}>
-                {isPositive ? '+' : ''}{crypto.changePercent.toFixed(2)}%
+                {realTimeChange !== undefined ? `${isPositive ? '+' : ''}${realTimeChange.toFixed(2)}%` : '--'}
               </span>
             </div>
             <span className="detail-pair">{crypto.symbol}/USD</span>
@@ -243,19 +305,19 @@ const CryptoDetail = ({ crypto, onClose }) => {
             <div className="stats-grid">
               <div className="stat-item">
                 <span className="stat-label">MARKET CAP</span>
-                <span className="stat-value">{crypto.marketCap}</span>
+                <span className="stat-value">{realTimeMarketCap ? formatMarketCap(realTimeMarketCap) : crypto.marketCap}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">24H VOLUME</span>
-                <span className="stat-value">{crypto.volume24h}</span>
+                <span className="stat-value">{realTimeVolume ? formatVolume(realTimeVolume) : crypto.volume24h}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">RANK</span>
                 <span className="stat-value">#{crypto.rank}</span>
               </div>
               <div className="stat-item">
-                <span className="stat-label">VOLATILITY</span>
-                <span className="stat-value">{volatility}%</span>
+                <span className="stat-label">24H CHANGE</span>
+                <span className="stat-value">{realTimeChange !== undefined ? `${realTimeChange >= 0 ? '+' : ''}${realTimeChange.toFixed(2)}%` : '--'}</span>
               </div>
             </div>
           </div>
@@ -266,11 +328,11 @@ const CryptoDetail = ({ crypto, onClose }) => {
             <div className="stats-grid">
               <div className="stat-item">
                 <span className="stat-label">24H HIGH</span>
-                <span className="stat-value">{formatPrice(crypto.high24h)}</span>
+                <span className="stat-value">{formatPrice(realTimeHigh)}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">24H LOW</span>
-                <span className="stat-value">{formatPrice(crypto.low24h)}</span>
+                <span className="stat-value">{formatPrice(realTimeLow)}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">24H RANGE</span>
@@ -278,7 +340,7 @@ const CryptoDetail = ({ crypto, onClose }) => {
               </div>
               <div className="stat-item">
                 <span className="stat-label">ALL TIME HIGH</span>
-                <span className="stat-value">{formatPrice(crypto.ath)}</span>
+                <span className="stat-value">{formatPrice(realTimeATH)}</span>
               </div>
             </div>
           </div>

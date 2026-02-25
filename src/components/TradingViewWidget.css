@@ -143,4 +143,49 @@
     padding: 4px 8px;
     font-size: 9px;
   }
+  
+  .chart-container {
+    min-height: 180px;
+    height: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tradingview-widget {
+    height: 250px;
+    min-height: 220px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+  }
+  
+  .chart-container {
+    min-height: 180px;
+    height: 180px;
+    -webkit-flex: 1;
+    flex: 1;
+    display: -webkit-flex;
+    display: flex;
+  }
+  
+  .chart-container > div {
+    min-height: 180px;
+    height: 180px !important;
+    -webkit-flex: 1;
+    flex: 1;
+  }
+  
+  .interval-buttons {
+    padding: 6px;
+    gap: 4px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+  }
+  
+  .interval-btn {
+    padding: 4px 6px;
+    font-size: 8px;
+    min-width: 30px;
+  }
 }

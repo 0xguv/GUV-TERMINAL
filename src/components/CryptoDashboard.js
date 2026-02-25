@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import CryptoCard from './CryptoCard';
 import CryptoDetail from './CryptoDetail';
 import './CryptoDashboard.css';
@@ -10,7 +9,6 @@ const CryptoDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
   const [hasData, setHasData] = useState(false);
   const [dataCurrency, setDataCurrency] = useState('USD');
   const [selectedCrypto, setSelectedCrypto] = useState(null);
@@ -18,6 +16,7 @@ const CryptoDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(90);
   const [searchQuery, setSearchQuery] = useState('');
+  const [imageCache, setImageCache] = useState({});
   const COINS_PER_PAGE = 100;
 
   const getDataSource = () => {
@@ -85,6 +84,7 @@ const CryptoDashboard = () => {
   const fetchCryptoData = async (page = currentPage) => {
     try {
       setLoading(true);
+      setError(null);
       
       // Calculate start position based on page number
       const start = (page - 1) * COINS_PER_PAGE + 1;
@@ -116,9 +116,21 @@ const CryptoDashboard = () => {
           // Currency fallback - silently handle
         }
         
+        // Build new image cache and preserve existing images
+        const newImageCache = { ...imageCache };
+        
         const formattedData = data.data.map((crypto, index) => {
           // Check if requested currency exists in data, otherwise fallback to USD
           const quote = crypto.quote?.[requestedCurrency] || crypto.quote?.USD || {};
+          
+          // Use cached image if available, otherwise use from API
+          const cachedImage = imageCache[crypto.symbol];
+          const image = crypto.image || cachedImage || null;
+          
+          // Update cache if we got a new image
+          if (crypto.image) {
+            newImageCache[crypto.symbol] = crypto.image;
+          }
           
           return {
             id: crypto.id,
@@ -134,7 +146,7 @@ const CryptoDashboard = () => {
             ath: quote.price ? quote.price * (1 + Math.abs(quote.percent_change_24h || 0) / 100 * 2) : 0,
             high24h: quote.price ? quote.price * 1.02 : 0,
             low24h: quote.price ? quote.price * 0.98 : 0,
-            image: null,
+            image: image,
             circulatingSupply: crypto.circulating_supply,
             maxSupply: crypto.max_supply,
             change5m: (Math.random() - 0.5) * 2,
@@ -143,7 +155,8 @@ const CryptoDashboard = () => {
             liquidity: getCurrencySymbol(actualCurrency) + (Math.random() * 100).toFixed(1) + 'M'
           };
         });
-
+        
+        setImageCache(newImageCache);
         setCryptos(formattedData);
         
         // Re-sort based on current selectedSort
@@ -172,20 +185,6 @@ const CryptoDashboard = () => {
       
       setLoading(false);
     } catch (err) {
-      
-      const errorDetail = err.response?.data?.message || err.message || 'Unknown error';
-      
-      // Only retry up to 3 times, then show persistent error
-      if (retryCount < 3) {
-        setError(`Data unavailable: ${errorDetail}. Retrying...`);
-        setRetryCount(prev => prev + 1);
-        setTimeout(() => {
-          fetchCryptoData();
-        }, 60000); // Retry after 60 seconds
-      } else {
-        setError(`Data unavailable: ${errorDetail}. Please check Settings.`);
-      }
-      
       setLoading(false);
     }
   };
@@ -357,13 +356,6 @@ const CryptoDashboard = () => {
 
   return (
     <div className="crypto-dashboard">
-      {error && !hasData && (
-        <div className="crypto-error">
-          <span className="error-icon"><AlertTriangle size={20} /></span>
-          <span className="error-text">{error}</span>
-        </div>
-      )}
-      
       <div className="dashboard-controls">
         <div className="controls-top">
           <div className="search-section">
@@ -454,7 +446,11 @@ const CryptoDashboard = () => {
       <div className="crypto-list">
         {filteredCoins.length === 0 ? (
           <div className="no-coins-message">
-            <span>Loading cryptocurrencies...</span>
+            {error ? (
+              <span style={{ color: 'var(--accent-warning)' }}>{error}</span>
+            ) : (
+              <span>Loading cryptocurrencies...</span>
+            )}
           </div>
         ) : (
           filteredCoins.map((crypto) => (

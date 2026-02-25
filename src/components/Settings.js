@@ -31,6 +31,9 @@ const Settings = () => {
     return parsed;
   });
 
+  const [priceApiSaved, setPriceApiSaved] = useState(false);
+  const [newsApiSaved, setNewsApiSaved] = useState(false);
+
   const saveSettings = (newSettings) => {
     setSettings(newSettings);
     localStorage.setItem('guvSettings', JSON.stringify(newSettings));
@@ -218,16 +221,15 @@ const Settings = () => {
               <button
                 className={`refresh-option-btn ${settings.priceProvider === 'coingecko' ? 'active' : ''}`}
                 onClick={async () => {
-                  // Reset to USD when switching to CoinGecko
                   const newSettings = { ...settings, priceProvider: 'coingecko', defaultCurrency: 'USD' };
                   saveSettings(newSettings);
-                  // Send to backend immediately
+                  window.dispatchEvent(new Event('guv-settings-change'));
                   try {
                     await fetch('/api/price-key', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
-                        apiKey: settings.priceApiKey,
+                        apiKey: '',
                         provider: 'coingecko'
                       })
                     });
@@ -239,14 +241,15 @@ const Settings = () => {
               <button
                 className={`refresh-option-btn ${settings.priceProvider === 'cryptocompare' ? 'active' : ''}`}
                 onClick={async () => {
-                  updateSetting('priceProvider', 'cryptocompare');
-                  // Send to backend immediately
+                  const newSettings = { ...settings, priceProvider: 'cryptocompare' };
+                  saveSettings(newSettings);
+                  window.dispatchEvent(new Event('guv-settings-change'));
                   try {
                     await fetch('/api/price-key', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
-                        apiKey: settings.priceApiKey,
+                        apiKey: '',
                         provider: 'cryptocompare'
                       })
                     });
@@ -258,14 +261,15 @@ const Settings = () => {
               <button
                 className={`refresh-option-btn ${settings.priceProvider === 'cmc' ? 'active' : ''}`}
                 onClick={async () => {
-                  updateSetting('priceProvider', 'cmc');
-                  // Send to backend immediately
+                  const newSettings = { ...settings, priceProvider: 'cmc' };
+                  saveSettings(newSettings);
+                  window.dispatchEvent(new Event('guv-settings-change'));
                   try {
                     await fetch('/api/price-key', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
-                        apiKey: settings.priceApiKey,
+                        apiKey: settings.priceApiKey || '',
                         provider: 'cmc'
                       })
                     });
@@ -283,7 +287,7 @@ const Settings = () => {
               <input
                 type="text"
                 className="rpc-input"
-                placeholder={settings.priceProvider === 'coingecko' ? 'api.coingecko.com/api/v3' : settings.priceProvider === 'cryptocompare' ? 'none' : 'none'}
+                placeholder={settings.priceProvider === 'coingecko' ? 'api.coingecko.com/api/v3 (optional)' : settings.priceProvider === 'cryptocompare' ? 'min-api.cryptocompare.com (optional)' : 'optional'}
                 value={settings.priceApiKey || ''}
                 onChange={(e) => updateSetting('priceApiKey', e.target.value.trim())}
               />
@@ -291,7 +295,7 @@ const Settings = () => {
                 className="rpc-save-btn"
                 onClick={async () => {
                   try {
-                    await fetch('/api/price-key', {
+                    const response = await fetch('/api/price-key', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -299,11 +303,16 @@ const Settings = () => {
                         provider: settings.priceProvider
                       })
                     });
-                  } catch (e) {}
-                  window.location.reload();
+                    const result = await response.json();
+                    console.log('Price API settings saved:', result);
+                    setPriceApiSaved(true);
+                    setTimeout(() => setPriceApiSaved(false), 2000);
+                  } catch (e) {
+                    console.error('Failed to save price API settings:', e);
+                  }
                 }}
               >
-                SAVE
+                {priceApiSaved ? 'SAVED!' : 'SAVE'}
               </button>
             </div>
           </div>
@@ -357,10 +366,11 @@ const Settings = () => {
                         })
                       });
                     } catch (e) {}
-                    window.location.reload();
+                    setNewsApiSaved(true);
+                    setTimeout(() => setNewsApiSaved(false), 2000);
                   }}
                 >
-                  SAVE
+                  {newsApiSaved ? 'SAVED!' : 'SAVE'}
                 </button>
               </div>
             </div>
@@ -390,10 +400,11 @@ const Settings = () => {
                         })
                       });
                     } catch (e) {}
-                    window.location.reload();
+                    setNewsApiSaved(true);
+                    setTimeout(() => setNewsApiSaved(false), 2000);
                   }}
                 >
-                  SAVE
+                  {newsApiSaved ? 'SAVED!' : 'SAVE'}
                 </button>
               </div>
             </div>
@@ -424,10 +435,11 @@ const Settings = () => {
                         })
                       });
                     } catch (e) {}
-                    window.location.reload();
+                    setNewsApiSaved(true);
+                    setTimeout(() => setNewsApiSaved(false), 2000);
                   }}
                 >
-                  SAVE
+                  {newsApiSaved ? 'SAVED!' : 'SAVE'}
                 </button>
               </div>
             </div>

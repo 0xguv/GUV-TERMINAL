@@ -105,6 +105,9 @@ const CryptoCard = ({ crypto, rank, onClick }) => {
       </div>
       
       <div className="crypto-cell symbol-cell">
+        {crypto.image ? (
+          <img src={crypto.image} alt={crypto.symbol} className="crypto-icon" />
+        ) : null}
         <span className="crypto-symbol">{(crypto.symbol || 'UNKNOWN')}/{crypto.actualCurrency || getCurrencyCode()}</span>
       </div>
       

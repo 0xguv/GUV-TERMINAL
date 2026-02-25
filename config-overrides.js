@@ -1,4 +1,12 @@
+const { override, addWebpackPlugin } = require('customize-cra');
+
 module.exports = function override(config, env) {
+  // Set dev server port to 3002
+  config.devServer = {
+    ...config.devServer,
+    port: 3002,
+  };
+
   // Add polyfills for Node.js modules
   config.resolve.fallback = {
     ...config.resolve.fallback,
@@ -15,11 +23,12 @@ module.exports = function override(config, env) {
     https: require.resolve('https-browserify'),
     os: require.resolve('os-browserify/browser'),
     path: require.resolve('path-browserify'),
-    fs: false,
-    net: false,
-    tls: false,
-    child_process: false,
-    dns: false,
+      fs: false,
+      net: false,
+      tls: false,
+      child_process: false,
+      dns: false,
+      vm: false,
   };
   
   // Disable source maps for problematic packages

@@ -112,11 +112,7 @@ const TradingViewWidget = ({ symbol, pairName, currentPrice }) => {
 
   return (
     <div className="tradingview-widget">
-      <div className="chart-info">
-        <span className="pair-symbol">{pairName || symbol}</span>
-        <span className="pair-price">{currentPrice || 'Loading...'}</span>
-      </div>
-      <div className="chart-container" ref={containerRef}>
+      <div className="chart-container" ref={containerRef} style={{ minHeight: 200 }}>
         {error && <div className="chart-error">Chart unavailable</div>}
       </div>
       <div className="interval-buttons">

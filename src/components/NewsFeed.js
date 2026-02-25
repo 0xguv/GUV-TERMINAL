@@ -3,7 +3,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import BridgeHistory from './BridgeHistory';
 import './NewsFeed.css';
 
-const NewsFeed = ({ autoRefresh = true, feedType = 'news' }) => {
+const NewsFeed = ({ autoRefresh = true, feedType = 'news', chain = 'all' }) => {
   const { publicKey, connected } = useWallet();
   const { connection } = useConnection();
   const [news, setNews] = useState([]);
@@ -13,6 +13,13 @@ const NewsFeed = ({ autoRefresh = true, feedType = 'news' }) => {
   const [newArticleIds, setNewArticleIds] = useState(new Set());
   const [lastUpdate, setLastUpdate] = useState(null);
   const [selectedArticle, setSelectedArticle] = useState(null);
+
+  // Clear news when chain changes to ensure fresh fetch
+  useEffect(() => {
+    setNews([]);
+    setLoading(true);
+    setError(null);
+  }, [chain]);
 
   const getFallbackNews = useCallback(() => {
     const now = new Date();
@@ -260,8 +267,14 @@ const NewsFeed = ({ autoRefresh = true, feedType = 'news' }) => {
       setLoading(true);
       setError(null);
 
-      // Add refresh parameter if manual refresh
-      const url = isManual ? '/api/news?refresh=true' : '/api/news';
+      let url;
+      if (chain === 'solana') {
+        // Use dedicated Solana news endpoint
+        url = isManual ? '/api/news/solana?refresh=true' : '/api/news/solana';
+      } else {
+        const chainParam = chain !== 'all' ? (isManual ? `&chain=${chain}` : `?chain=${chain}`) : '';
+        url = isManual ? `/api/news?refresh=true${chainParam}` : `/api/news${chainParam}`;
+      }
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -347,7 +360,7 @@ const NewsFeed = ({ autoRefresh = true, feedType = 'news' }) => {
         if (intervalId) clearInterval(intervalId);
       };
     }
-  }, [feedType, fetchCryptoNews, fetchSwapHistory, autoRefresh]);
+  }, [feedType, chain, fetchCryptoNews, fetchSwapHistory, autoRefresh]);
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);

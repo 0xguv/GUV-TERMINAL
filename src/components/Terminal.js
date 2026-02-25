@@ -223,7 +223,7 @@ const Terminal = () => {
               <span className="panel-title">{getNewsTitle()}</span>
               <span className="panel-indicator flash">● NEW</span>
             </div>
-            <NewsFeed feedType={activeTab === 'SWAP' ? 'swap' : activeTab === 'BRIDGE' ? 'bridge' : 'news'} />
+            <NewsFeed key={activeTab === 'SOLANA' ? 'solana' : 'crypto'} feedType={activeTab === 'SWAP' ? 'swap' : activeTab === 'BRIDGE' ? 'bridge' : 'news'} chain={activeTab === 'SOLANA' ? 'solana' : 'all'} />
           </div>
         )}
 
@@ -377,9 +377,9 @@ const Terminal = () => {
       <MobileOverlay 
         isOpen={mobileActivePanel === 'news'}
         onClose={() => setMobileActivePanel(null)}
-        title="CRYPTO WIRE"
+        title={activeTab === 'SOLANA' ? 'SOLANA WIRE' : 'CRYPTO WIRE'}
       >
-        <NewsFeed feedType="news" />
+        <NewsFeed key={activeTab === 'SOLANA' ? 'solana' : 'crypto'} feedType="news" chain={activeTab === 'SOLANA' ? 'solana' : 'all'} />
       </MobileOverlay>
 
       <MobileOverlay 

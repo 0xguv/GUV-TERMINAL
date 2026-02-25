@@ -24,6 +24,7 @@
     "buffer": "^6.0.3",
     "concurrently": "^8.2.0",
     "cors": "^2.8.5",
+    "cross-env": "^10.1.0",
     "crypto-browserify": "^3.12.1",
     "customize-cra": "^1.0.0",
     "dotenv": "^16.3.1",
@@ -41,12 +42,12 @@
   },
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
-    "client": "react-app-rewired start",
+    "client": "cross-env PORT=3002 react-app-rewired start",
     "server": "node server.js",
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+    "dev": "npm run start"
   },
   "browserslist": {
     "production": [

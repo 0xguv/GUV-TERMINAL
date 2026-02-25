@@ -1,5 +1,38 @@
 .app {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--bg-primary);
+  overflow-x: hidden;
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .app {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 320px) {
+  .app {
+    font-size: 12px;
+  }
+}
+
+/* Prevent pull-to-refresh on mobile */
+body {
+  overscroll-behavior: none;
+}
+
+/* Touch optimization */
+@media (hover: none) and (pointer: coarse) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  button, 
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }

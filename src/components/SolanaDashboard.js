@@ -4,6 +4,8 @@ import CryptoCard from './CryptoCard';
 import CryptoDetail from './CryptoDetail';
 import './CryptoDashboard.css';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+
 const SolanaDashboard = () => {
   const [solanaTokens, setSolanaTokens] = useState([]);
   const [filteredCoins, setFilteredCoins] = useState([]);
@@ -17,10 +19,25 @@ const SolanaDashboard = () => {
   const [boostedTokens, setBoostedTokens] = useState([]);
   const [topBoosted, setTopBoosted] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tokenMetadata, setTokenMetadata] = useState({});
   const COINS_PER_PAGE = 25; // Show 25 per page, 4 pages = 100 tokens
 
   // DexScreener API Base URLs
   const DEXSCREENER_BASE = 'https://api.dexscreener.com';
+  
+  // Multiple endpoints to get more Solana tokens
+  const getDexScreenerEndpoints = () => [
+    // By pair age (newest pairs)
+    'https://api.dexscreener.com/latest/dex/search?q=solana&sort=pairAge&order=desc&limit=50',
+    // By liquidity
+    'https://api.dexscreener.com/latest/dex/search?q=solana&sort=liquidity&order=desc&limit=50',
+    // By volume
+    'https://api.dexscreener.com/latest/dex/search?q=solana&sort=volume&order=desc&limit=50',
+    // By market cap
+    'https://api.dexscreener.com/latest/dex/search?q=solana&sort=marketCap&order=desc&limit=50',
+    // Generic Solana search
+    'https://api.dexscreener.com/latest/dex/search?q=solana&limit=100'
+  ];
 
   const getAutoRefreshInterval = () => {
     const saved = localStorage.getItem('guvSettings');
@@ -63,45 +80,36 @@ const SolanaDashboard = () => {
       setError(null);
       
       // Use multiple DexScreener endpoints in parallel for comprehensive coverage
-      const [
-        solanaPairsResponse,
-        boostedResponse,
-        topBoostedResponse
-      ] = await Promise.allSettled([
-        // First: Get Solana pairs only - use token-pairs endpoint
-        fetch(`${DEXSCREENER_BASE}/latest/dex/pairs/solana`),
+      const endpoints = getDexScreenerEndpoints();
+      const endpointPromises = endpoints.map(url => fetch(url).then(r => r.ok ? r.json() : { pairs: [] }).catch(() => ({ pairs: [] })));
+      const [boostedResponse, topBoostedResponse, ...endpointResults] = await Promise.allSettled([
         fetch(`${DEXSCREENER_BASE}/token-boosts/latest/v1`),
-        fetch(`${DEXSCREENER_BASE}/token-boosts/top/v1`)
+        fetch(`${DEXSCREENER_BASE}/token-boosts/top/v1`),
+        ...endpointPromises
       ]);
       
       let pairsData = [];
       const seenPairs = new Set();
       
-      // Process main pairs search - filter strictly for Solana
-      if (solanaPairsResponse.status === 'fulfilled' && solanaPairsResponse.value.ok) {
-        try {
-          const data = await solanaPairsResponse.value.json();
-          pairsData = (data.pairs || []).filter(pair => {
+      // Process all endpoint results
+      for (const result of endpointResults) {
+        if (result.status === 'fulfilled' && result.value?.pairs) {
+          result.value.pairs.forEach(pair => {
             // STRICT: Only allow actual Solana chain
-            if (pair.chainId !== 'solana') return false;
+            if (pair.chainId && pair.chainId !== 'solana') return;
             
-            // Exclude wrapped SOL tokens from other chains
-            const baseAddr = pair.baseToken?.address?.toLowerCase() || '';
-            const isWrappedSOL = baseAddr === '0xc02aab33a8bd10c95d70e28a34f9308a9fd41ce' || // Ethereum WETH
-                                  baseAddr === '0xae13d410da5f5c3d1d29df9c1f9a6f3b9e2a5c7d' || // Arbitrum WETH
-                                  baseAddr === '0x0c21093e95a4078b5ab5d8eb9d5c4f8b5c8d1234'; // Other chain wrapped tokens
-            
-            if (seenPairs.has(pair.pairAddress)) return false;
-            seenPairs.add(pair.pairAddress);
-            return true;
+            const pairAddr = pair.pairAddress || '';
+            if (!pairAddr || seenPairs.has(pairAddr)) return;
+            seenPairs.add(pairAddr);
+            pairsData.push(pair);
           });
-        } catch (parseError) {
-          
         }
       }
       
-      // If we got very few pairs, supplement with individual token searches
-      if (pairsData.length < 30) {
+      console.log(`[SolanaDashboard] Total pairs fetched: ${pairsData.length}`);
+      
+      // If we still need more, supplement with individual token searches
+      if (pairsData.length < 50) {
         
         const popularTokens = [
           'SOL', 'BONK', 'RAY', 'JUP', 'ORCA', 'WIF', 'MEW', 'PYTH', 'JTO',
@@ -145,7 +153,7 @@ const SolanaDashboard = () => {
       
       // Process boosted tokens
       let boostedList = [];
-      if (boostedResponse.status === 'fulfilled' && boostedResponse.value.ok) {
+      if (boostedResponse.status === 'fulfilled') {
         try {
           const boosted = await boostedResponse.value.json();
           boostedList = (boosted.tokens || boosted || []).filter(b => b.chainId === 'solana');
@@ -157,7 +165,7 @@ const SolanaDashboard = () => {
       
       // Process top boosted
       let topBoostedList = [];
-      if (topBoostedResponse.status === 'fulfilled' && topBoostedResponse.value.ok) {
+      if (topBoostedResponse.status === 'fulfilled') {
         try {
           const top = await topBoostedResponse.value.json();
           topBoostedList = (top.tokens || top || []).filter(t => t.chainId === 'solana');
@@ -195,6 +203,8 @@ const SolanaDashboard = () => {
             ath: price * 1.5,
             high24h: price * 1.02,
             low24h: price * 0.98,
+            // Try multiple sources for image: DexScreener -> Solana Token List -> null
+            image: pair.baseToken?.logoUri || pair.info?.imageUrl || tokenMetadata[tokenAddress]?.logoURI || null,
             circulatingSupply: pair.marketCap ? (parseFloat(pair.marketCap) / price) : 0,
             maxSupply: null,
             change5m: parseFloat(pair.priceChange?.m5) || 0,
@@ -208,7 +218,10 @@ const SolanaDashboard = () => {
             hasTakeover: false,
             profile: null,
             actualCurrency: 'USD', // Force USD for CryptoCard
-            isSolanaToken: true // Flag to indicate this is a Solana token (DexScreener data)
+            isSolanaToken: true, // Flag to indicate this is a Solana token (DexScreener data)
+            // Store token metadata for reference
+            tokenName: tokenMetadata[tokenAddress]?.name || pair.baseToken?.name || null,
+            tokenSymbol: tokenMetadata[tokenAddress]?.symbol || pair.baseToken?.symbol || null
           });
         }
       });
@@ -225,134 +238,10 @@ const SolanaDashboard = () => {
         rank: index + 1
       }));
 
-      let filteredData = formattedData;
-      
-      // If we don't have enough tokens, use fallback data
-      if (formattedData.length < 20) {
-        
-        const fallbackTokens = [
-          { symbol: 'SOL', name: 'Solana', price: 80.01, changePercent: -2.56, marketCap: 45430442680, volume24h: 4199578125, liquidity: 500000000 },
-          { symbol: 'BONK', name: 'Bonk', price: 0.000021, changePercent: 5.67, marketCap: 1200000000, volume24h: 45000000, liquidity: 12000000 },
-          { symbol: 'RAY', name: 'Raydium', price: 2.45, changePercent: -1.23, marketCap: 650000000, volume24h: 23000000, liquidity: 8500000 },
-          { symbol: 'JUP', name: 'Jupiter', price: 1.23, changePercent: 3.45, marketCap: 1800000000, volume24h: 67000000, liquidity: 22000000 },
-          { symbol: 'ORCA', name: 'Orca', price: 0.89, changePercent: -0.45, marketCap: 420000000, volume24h: 8900000, liquidity: 5600000 },
-          { symbol: 'WIF', name: 'Dogwifhat', price: 1.85, changePercent: 7.89, marketCap: 1850000000, volume24h: 98000000, liquidity: 35000000 },
-          { symbol: 'MEW', name: 'cat in a dogs world', price: 0.0034, changePercent: -2.34, marketCap: 310000000, volume24h: 12000000, liquidity: 4200000 },
-          { symbol: 'JTO', name: 'Jito', price: 2.78, changePercent: 1.56, marketCap: 340000000, volume24h: 15000000, liquidity: 6800000 },
-          { symbol: 'PYTH', name: 'Pyth Network', price: 0.34, changePercent: -3.21, marketCap: 520000000, volume24h: 18000000, liquidity: 9200000 },
-          { symbol: 'BLZE', name: 'Blaze', price: 0.0089, changePercent: 12.45, marketCap: 89000000, volume24h: 3400000, liquidity: 1200000 },
-          { symbol: 'HNT', name: 'Helium', price: 4.56, changePercent: -0.78, marketCap: 750000000, volume24h: 6700000, liquidity: 8900000 },
-          { symbol: 'FIDA', name: 'Bonfida', price: 0.23, changePercent: 4.32, marketCap: 89000000, volume24h: 2300000, liquidity: 1500000 },
-          { symbol: 'SAMO', name: 'Samoyedcoin', price: 0.0056, changePercent: -1.89, marketCap: 23000000, volume24h: 890000, liquidity: 560000 },
-          { symbol: 'MSOL', name: 'Marinade staked SOL', price: 156.78, changePercent: 2.34, marketCap: 1200000000, volume24h: 4500000, liquidity: 2300000 },
-          { symbol: 'PRCL', name: 'Parcl', price: 0.34, changePercent: -4.56, marketCap: 67000000, volume24h: 1200000, liquidity: 780000 },
-          { symbol: 'W', name: 'Wormhole', price: 0.56, changePercent: 2.12, marketCap: 890000000, volume24h: 23000000, liquidity: 7800000 },
-          { symbol: 'TNSR', name: 'Tensor', price: 1.23, changePercent: -1.45, marketCap: 123000000, volume24h: 4500000, liquidity: 2300000 },
-          { symbol: 'KMNO', name: 'Kamino', price: 0.089, changePercent: 5.67, marketCap: 89000000, volume24h: 3400000, liquidity: 1200000 },
-          { symbol: 'CLORE', name: 'Clore.ai', price: 0.12, changePercent: 8.90, marketCap: 45000000, volume24h: 2300000, liquidity: 890000 },
-          { symbol: 'ZEX', name: 'Zeta', price: 0.45, changePercent: -2.34, marketCap: 123000000, volume24h: 5600000, liquidity: 2300000 },
-          { symbol: 'DRIFT', name: 'Drift', price: 0.78, changePercent: 3.45, marketCap: 178000000, volume24h: 7800000, liquidity: 3400000 },
-          { symbol: 'CLOUD', name: 'Cloud', price: 0.23, changePercent: -4.56, marketCap: 67000000, volume24h: 3400000, liquidity: 1200000 },
-          { symbol: 'SHDW', name: 'Shadow', price: 0.34, changePercent: 6.78, marketCap: 89000000, volume24h: 4500000, liquidity: 1800000 },
-          { symbol: 'IO', name: 'IO.net', price: 2.34, changePercent: -1.23, marketCap: 234000000, volume24h: 12300000, liquidity: 5600000 },
-          { symbol: 'ZRO', name: 'LayerZero', price: 3.45, changePercent: 4.56, marketCap: 345000000, volume24h: 16700000, liquidity: 7800000 },
-          { symbol: 'POPCAT', name: 'Popcat', price: 0.67, changePercent: 12.34, marketCap: 567000000, volume24h: 23400000, liquidity: 8900000 },
-          { symbol: 'MOG', name: 'Mog Coin', price: 0.0000012, changePercent: -3.45, marketCap: 456000000, volume24h: 18900000, liquidity: 6700000 },
-          { symbol: 'MICHI', name: 'Michi', price: 0.34, changePercent: 7.89, marketCap: 123000000, volume24h: 7800000, liquidity: 3400000 },
-          { symbol: 'GOAT', name: 'Goatseus Maximus', price: 0.45, changePercent: -5.67, marketCap: 234000000, volume24h: 12300000, liquidity: 5600000 },
-          { symbol: 'MOODENG', name: 'Moo Deng', price: 0.12, changePercent: 15.67, marketCap: 89000000, volume24h: 5600000, liquidity: 2300000 },
-          { symbol: 'PNUT', name: 'Peanut the Squirrel', price: 0.78, changePercent: -8.90, marketCap: 178000000, volume24h: 8900000, liquidity: 4500000 },
-          { symbol: 'CHILLGUY', name: 'Chill Guy', price: 0.056, changePercent: 23.45, marketCap: 67000000, volume24h: 4500000, liquidity: 1800000 },
-          { symbol: 'SPX', name: 'SPX6900', price: 0.89, changePercent: -12.34, marketCap: 89000000, volume24h: 6700000, liquidity: 3400000 },
-          { symbol: 'GIGA', name: 'Gigachad', price: 0.023, changePercent: 18.90, marketCap: 56000000, volume24h: 3400000, liquidity: 1200000 },
-          { symbol: 'RETARDIO', name: 'Retardio', price: 0.034, changePercent: -15.67, marketCap: 45000000, volume24h: 2800000, liquidity: 980000 },
-          { symbol: 'SCF', name: 'Solar', price: 0.45, changePercent: 9.12, marketCap: 123000000, volume24h: 6700000, liquidity: 3400000 },
-          { symbol: 'RENDER', name: 'Render', price: 6.78, changePercent: -2.34, marketCap: 2780000000, volume24h: 45000000, liquidity: 12000000 },
-          { symbol: 'HONEY', name: 'Hivemapper', price: 0.12, changePercent: 4.56, marketCap: 78000000, volume24h: 3400000, liquidity: 1500000 },
-          { symbol: 'NATIX', name: 'Natix Network', price: 0.067, changePercent: -6.78, marketCap: 67000000, volume24h: 2300000, liquidity: 890000 },
-          { symbol: 'AURY', name: 'Aurory', price: 0.34, changePercent: 11.23, marketCap: 89000000, volume24h: 4500000, liquidity: 2300000 },
-          { symbol: 'ATLAS', name: 'Star Atlas', price: 0.0045, changePercent: -8.90, marketCap: 123000000, volume24h: 7800000, liquidity: 3400000 },
-          { symbol: 'POLIS', name: 'Star Atlas DAO', price: 0.23, changePercent: 5.67, marketCap: 67000000, volume24h: 3400000, liquidity: 1500000 },
-          { symbol: 'STEP', name: 'Step Finance', price: 0.056, changePercent: -3.45, marketCap: 45000000, volume24h: 1800000, liquidity: 780000 },
-          { symbol: 'TULIP', name: 'Tulip Protocol', price: 1.23, changePercent: 7.89, marketCap: 123000000, volume24h: 5600000, liquidity: 2800000 },
-          { symbol: 'SLND', name: 'Solend', price: 0.89, changePercent: -4.56, marketCap: 89000000, volume24h: 3400000, liquidity: 1500000 },
-          { symbol: 'MNDE', name: 'Marinade', price: 0.12, changePercent: 2.34, marketCap: 56000000, volume24h: 2300000, liquidity: 890000 },
-          { symbol: 'LDO', name: 'Lido DAO (SOL)', price: 2.34, changePercent: -1.23, marketCap: 178000000, volume24h: 8900000, liquidity: 4500000 },
-          { symbol: 'UXD', name: 'UXD Protocol', price: 1.00, changePercent: 0.12, marketCap: 45000000, volume24h: 1200000, liquidity: 560000 },
-          { symbol: 'NOS', name: 'Nosana', price: 0.78, changePercent: 14.56, marketCap: 123000000, volume24h: 6700000, liquidity: 3400000 },
-          { symbol: 'DUST', name: 'Dust Protocol', price: 0.45, changePercent: -7.89, marketCap: 67000000, volume24h: 3400000, liquidity: 1500000 },
-          { symbol: 'GMT', name: 'GMT', price: 0.34, changePercent: 3.45, marketCap: 234000000, volume24h: 12300000, liquidity: 5600000 },
-          { symbol: 'GENE', name: 'Genopets', price: 0.12, changePercent: -9.12, marketCap: 45000000, volume24h: 1800000, liquidity: 780000 },
-          { symbol: 'DFL', name: 'DeFi Land', price: 0.0089, changePercent: 21.34, marketCap: 34000000, volume24h: 1500000, liquidity: 560000 },
-          { symbol: 'SONAR', name: 'Sonar Watch', price: 0.23, changePercent: -11.23, marketCap: 56000000, volume24h: 2300000, liquidity: 980000 },
-          { symbol: 'MANGO', name: 'Mango', price: 0.056, changePercent: 6.78, marketCap: 67000000, volume24h: 3400000, liquidity: 1500000 },
-          { symbol: 'COPE', name: 'Cope', price: 0.0045, changePercent: -18.90, marketCap: 23000000, volume24h: 1200000, liquidity: 450000 },
-          { symbol: 'MEDIA', name: 'Media Network', price: 2.34, changePercent: 4.56, marketCap: 89000000, volume24h: 4500000, liquidity: 2300000 },
-          { symbol: 'ONLY1', name: 'Only1', price: 0.12, changePercent: -5.67, marketCap: 45000000, volume24h: 2300000, liquidity: 890000 },
-          { symbol: 'LIKE', name: 'Only1', price: 0.034, changePercent: 13.45, marketCap: 34000000, volume24h: 1500000, liquidity: 560000 },
-          { symbol: 'ROPE', name: 'Rope', price: 0.078, changePercent: -14.56, marketCap: 28000000, volume24h: 1200000, liquidity: 450000 },
-          { symbol: 'MER', name: 'Mercurial', price: 0.045, changePercent: 8.90, marketCap: 56000000, volume24h: 2800000, liquidity: 1200000 },
-          { symbol: 'SBR', name: 'Saber', price: 0.012, changePercent: -6.78, marketCap: 45000000, volume24h: 1800000, liquidity: 780000 },
-          { symbol: 'SUNNY', name: 'Sunny', price: 0.0034, changePercent: 25.67, marketCap: 34000000, volume24h: 1500000, liquidity: 560000 },
-          { symbol: 'PORT', name: 'Port Finance', price: 0.089, changePercent: -16.78, marketCap: 45000000, volume24h: 2300000, liquidity: 980000 },
-          { symbol: 'ALM', name: 'Almond', price: 0.056, changePercent: 7.89, marketCap: 34000000, volume24h: 1500000, liquidity: 670000 },
-          { symbol: 'SNY', name: 'Synthetify', price: 0.034, changePercent: -19.12, marketCap: 28000000, volume24h: 1200000, liquidity: 450000 },
-          { symbol: 'WOOF', name: 'Woof', price: 0.00078, changePercent: 32.45, marketCap: 23000000, volume24h: 980000, liquidity: 340000 },
-          { symbol: 'CHEEMS', name: 'Cheems', price: 0.00012, changePercent: -21.34, marketCap: 18000000, volume24h: 780000, liquidity: 280000 },
-          { symbol: 'KERO', name: 'Kero', price: 0.023, changePercent: 15.67, marketCap: 34000000, volume24h: 1500000, liquidity: 560000 },
-          { symbol: 'CATO', name: 'Cato', price: 0.045, changePercent: -8.90, marketCap: 28000000, volume24h: 1200000, liquidity: 450000 },
-          { symbol: 'WOOP', name: 'Woop', price: 0.067, changePercent: 11.23, marketCap: 34000000, volume24h: 1500000, liquidity: 670000 },
-          { symbol: 'SOLAPE', name: 'SolAPE', price: 0.089, changePercent: -13.45, marketCap: 28000000, volume24h: 1200000, liquidity: 560000 },
-          { symbol: 'FAB', name: 'FAB', price: 0.012, changePercent: 28.90, marketCap: 23000000, volume24h: 980000, liquidity: 340000 },
-          { symbol: 'SODA', name: 'Soda', price: 0.034, changePercent: -17.78, marketCap: 18000000, volume24h: 780000, liquidity: 280000 },
-          { symbol: 'SOLDOGE', name: 'SolDoge', price: 0.000045, changePercent: 45.67, marketCap: 12000000, volume24h: 560000, liquidity: 180000 },
-          { symbol: 'SOLCAT', name: 'SolCat', price: 0.000067, changePercent: -28.90, marketCap: 9800000, volume24h: 450000, liquidity: 150000 },
-          { symbol: 'SOLDOODLE', name: 'SolDoodle', price: 0.000089, changePercent: 18.90, marketCap: 8900000, volume24h: 340000, liquidity: 120000 }
-        ].map((token, index) => ({
-          id: token.symbol.toLowerCase(),
-          rank: index + 1,
-          symbol: token.symbol,
-          name: token.name,
-          address: null,
-          price: token.price,
-          change: token.price * (token.changePercent / 100),
-          changePercent: token.changePercent,
-          volume24h: formatVolume(token.volume24h),
-          marketCap: formatMarketCap(token.marketCap),
-          liquidity: formatVolume(token.liquidity),
-          sparklineData: generateSparkline(token.price, token.changePercent),
-          ath: token.price * 1.5,
-          high24h: token.price * 1.02,
-          low24h: token.price * 0.98,
-          circulatingSupply: token.marketCap / token.price,
-          maxSupply: null,
-          change5m: (Math.random() - 0.5) * 2,
-          change1h: (Math.random() - 0.5) * 3,
-          change6h: token.changePercent * 0.8,
-          chain: 'SOLANA',
-          dexId: 'raydium',
-          pairAddress: null,
-          profile: null,
-          isBoosted: false,
-          isTopBoosted: false,
-          hasTakeover: false,
-          icon: null,
-          description: null,
-          links: null,
-          actualCurrency: 'USD', // Force USD for CryptoCard
-          isSolanaToken: true // Flag to indicate this is a Solana token
-        }));
-        
-        formattedData = fallbackTokens;
-        filteredData = formattedData;
-        
-      }
-
       setSolanaTokens(formattedData);
-      setFilteredCoins(filteredData);
+      setFilteredCoins(formattedData);
       setLastUpdate(new Date());
       setLoading(false);
-      
       
     } catch (err) {
       
@@ -433,7 +322,24 @@ const SolanaDashboard = () => {
     setFilteredCoins(rankedData);
   };
 
+  // Fetch token metadata from Solana token list
+  const fetchTokenMetadata = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/solana/tokens`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.tokens) {
+          setTokenMetadata(data.tokens);
+          console.log('[SolanaDashboard] Loaded token metadata:', data.count);
+        }
+      }
+    } catch (err) {
+      console.error('[SolanaDashboard] Failed to fetch token metadata:', err);
+    }
+  };
+
   useEffect(() => {
+    fetchTokenMetadata();
     fetchSolanaData();
     
     // Get auto refresh interval from settings

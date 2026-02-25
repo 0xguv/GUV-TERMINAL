@@ -61,6 +61,12 @@
   gap: 12px;
 }
 
+.detail-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
 .detail-rank {
   color: var(--text-muted);
   font-size: 13px;
@@ -454,4 +460,141 @@
   color: var(--accent-success);
   font-size: 14px;
   gap: 10px;
+}
+
+/* Mobile responsive for CryptoDetail */
+@media (max-width: 480px) {
+  .crypto-detail-overlay {
+    padding: 10px;
+    align-items: flex-end;
+  }
+  
+  .crypto-detail-modal {
+    max-height: 85vh;
+    height: 85vh;
+    height: 85dvh;
+    margin: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  
+  .chart-section {
+    height: 280px;
+    min-height: 220px;
+    max-height: 350px;
+    flex-shrink: 0;
+    -webkit-flex-shrink: 0;
+  }
+  
+  .chart-container {
+    flex: 1;
+    min-height: 220px;
+    height: 100%;
+    -webkit-flex: 1;
+  }
+  
+  .detail-header {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .detail-title {
+    gap: 8px;
+  }
+  
+  .detail-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .detail-rank {
+    font-size: 10px;
+    padding: 2px 5px;
+  }
+  
+  .detail-symbol {
+    font-size: 14px;
+  }
+  
+  .detail-name {
+    font-size: 12px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .chart-section {
+    height: 250px;
+    min-height: 200px;
+    max-height: 300px;
+    flex-shrink: 0;
+  }
+  
+  .chart-container {
+    flex: 1;
+    min-height: 200px;
+    height: 100%;
+  }
+  
+  .detail-stats-grid {
+    padding: 10px;
+  }
+  
+  .stats-section {
+    padding: 10px;
+  }
+  
+  .section-title {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .stat-item {
+    padding: 8px;
+  }
+  
+  .stat-label {
+    font-size: 9px;
+  }
+  
+  .stat-value {
+    font-size: 12px;
+  }
+  
+  .detail-price-header {
+    padding: 10px 12px;
+  }
+  
+  .detail-price {
+    font-size: 20px;
+  }
+  
+  .detail-change {
+    font-size: 12px;
+  }
+  
+  .detail-pair {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 320px) {
+  .crypto-detail-modal {
+    max-height: 90vh;
+    height: 90vh;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-symbol {
+    font-size: 12px;
+  }
 }
